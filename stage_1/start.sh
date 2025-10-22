@@ -1,11 +1,7 @@
 #!/bin/bash
-# start.sh — for Railway Django deployment
+set -o errexit
 
-echo "Applying database migrations..."
-python manage.py migrate --noinput
-
-echo "Collecting static files..."
+pip install -r requirements.txt
+python manage.py migrate
 python manage.py collectstatic --noinput
-
-echo "Starting Gunicorn server..."
-gunicorn analyzer.wsgi:application --bind 0.0.0.0:$PORT
+gunicorn string_analyzer.wsgi:application --bind 0.0.0.0:$PORT
