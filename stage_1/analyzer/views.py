@@ -1,26 +1,9 @@
 from datetime import datetime
-import re
-from django.db import IntegrityError
-from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from .models import AnalyzedString
-from .utils import sha256_hash
-from .utils import (
-    get_length,
-    is_palindrome,
-    unique_characters,
-    word_count,
-    sha256_hash,
-    character_frequency_map
-)
-
-# views.py (replace or add these functions; keep your utils and model imports)
-from datetime import datetime
 from django.db import IntegrityError
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from django.http import JsonResponse
 from .models import AnalyzedString
 from .utils import (
     get_length,
@@ -179,3 +162,23 @@ def string_detail(request, value):
     # method == DELETE
     analyzed.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+# Filtering by natural language
+def filter_by_natural_language(request):
+    query = request.GET.get('q', '').lower()
+
+    if "palindrome" in query:
+        filter_type = "palindrome"
+    elif "even" in query or "odd" in query:
+        filter_type = "length"
+    elif "uppercase" in query:
+        filter_type = "uppercase"
+    elif "lowercase" in query:
+        filter_type = "lowercase"
+    else:
+        filter_type = "unknown"
+
+    return JsonResponse({
+        "message": "Natural language filter parsed successfully",
+        "filter_type": filter_type
+    }, status=200)
