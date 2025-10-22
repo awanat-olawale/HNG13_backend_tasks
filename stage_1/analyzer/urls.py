@@ -1,22 +1,18 @@
-from django.http import JsonResponse
 from django.urls import path
-from .views import analyze_string, get_string, get_all_strings, delete_string, filter_by_natural_language
-
-def home(request):
-    return JsonResponse({
-        "message": "Welcome to HNG Stage 1 String Analyzer API!",
-        "endpoints": [
-            "/strings/",
-            "/strings/all/",
-            "/strings/filter-by-natural-language/",
-        ]
-    })
+from .views import (
+    strings_collection,
+    string_detail,
+    filter_by_natural_language
+)
 
 urlpatterns = [
-    path('', home, name='home'),
-    path('strings/', analyze_string, name='analyze_string'),
-    path('strings/get/', get_string, name='get_string'),
-    path('strings/all/', get_all_strings, name='get_all_strings'),
+    # Collection: POST to create, GET to list/filter
+    path('strings/', strings_collection, name='strings_collection'),
+
+    # Natural language filter endpoint (keep this before the <path:value> route)
     path('strings/filter-by-natural-language/', filter_by_natural_language, name='filter_by_nl'),
-    path('strings/<str:value>/', delete_string, name='delete_string')
+
+    # Item: GET specific string and DELETE
+    # use <path:value> to allow encoded characters; ordering matters (must be after specific routes)
+    path('strings/<path:value>/', string_detail, name='string_detail'),
 ]
