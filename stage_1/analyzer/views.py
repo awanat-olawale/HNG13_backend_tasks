@@ -1,6 +1,7 @@
 from django.db import IntegrityError
-from django.http import JsonResponse
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 from .models import AnalyzedString
 from .utils import (
     get_length,
@@ -11,19 +12,20 @@ from .utils import (
     character_frequency_map
 )
 
+
 # POST /strings and GET /strings?filters...
 @api_view(['GET', 'POST'])
 def strings_collection(request):
     if request.method == 'POST':
         # Missing field
         if 'value' not in request.data:
-            return JsonResponse({"error": "Missing 'value' field"}, status=422)
+            return Response({"error": "Missing 'value' field"}, status=status.HTTP_400_BAD_REQUEST)
 
         text = request.data['value']
 
         # Invalid type
         if not isinstance(text, str):
-            return JsonResponse({"error": "'value' must be a string"}, status=422)
+            return Response({"error": "'value' must be a string"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         hash_value = sha256_hash(text)
 
@@ -38,7 +40,7 @@ def strings_collection(request):
                 character_frequency_map=character_frequency_map(text),
             )
         except IntegrityError:
-            return JsonResponse({"error": "String already exists"}, status=409)
+            return Response({"error": "String already exists"}, status=status.HTTP_409_CONFLICT)
 
         result = {
             "id": analyzed.sha256_hash,
@@ -54,7 +56,7 @@ def strings_collection(request):
             "created_at": analyzed.created_at.isoformat() + "Z"
         }
 
-        return JsonResponse(result, status=201)
+        return Response(result, status=status.HTTP_201_CREATED)
 
     # GET with filters
     qs = AnalyzedString.objects.all()
@@ -93,7 +95,7 @@ def strings_collection(request):
         "created_at": s.created_at.isoformat() + "Z"
     } for s in qs]
 
-    return JsonResponse({"data": data, "count": len(data)}, status=200)
+    return Response({"data": data, "count": len(data)}, status=status.HTTP_200_OK)
 
 
 # GET /strings/{value} and DELETE /strings/{value}
@@ -102,7 +104,7 @@ def string_detail(request, value):
     try:
         analyzed = AnalyzedString.objects.get(value=value)
     except AnalyzedString.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
+        return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
         result = {
@@ -118,11 +120,11 @@ def string_detail(request, value):
             },
             "created_at": analyzed.created_at.isoformat() + "Z"
         }
-        return JsonResponse(result, status=200)
+        return Response(result, status=status.HTTP_200_OK)
 
     # DELETE
     analyzed.delete()
-    return JsonResponse({"message": "Deleted successfully"}, status=200)
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # GET /strings/filter-by-natural-language?q=
@@ -134,9 +136,9 @@ def filter_by_natural_language(request):
     if "palindrome" in query:
         strings = strings.filter(is_palindrome=True)
     elif "even" in query:
-        strings = strings.filter(length__mod=2)
+        strings = [s for s in strings if s.length % 2 == 0]
     elif "odd" in query:
-        strings = strings.exclude(length__mod=2)
+        strings = [s for s in strings if s.length % 2 != 0]
     elif "uppercase" in query:
         strings = strings.filter(value__regex=r'^[A-Z]+$')
     elif "lowercase" in query:
@@ -149,4 +151,4 @@ def filter_by_natural_language(request):
         "sha256": s.sha256_hash
     } for s in strings]
 
-    return JsonResponse({"results": data}, status=200)
+    return Response({"results": data}, status=status.HTTP_200_OK)
